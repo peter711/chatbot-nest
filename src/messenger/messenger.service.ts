@@ -33,7 +33,7 @@ export class MessengerService {
     }
   }
 
-  private async callSendAPI(senderPSID: string, response: IWebhookResponse) {
+  private callSendAPI(senderPSID: string, response: IWebhookResponse) {
     const requestBody: IWebhookAPIRequestBody = {
       recipient: {
         id: senderPSID,
@@ -45,12 +45,19 @@ export class MessengerService {
     const pageAccessToken = this.getPageAccessToken();
 
     try {
-      await this.httpService.post(facebookGraphUri, requestBody, {
-        params: {
-          access_token: pageAccessToken,
-        },
-      });
-      console.log('Message sent to facebook API');
+      this.httpService
+        .post(facebookGraphUri, requestBody, {
+          params: {
+            access_token: pageAccessToken,
+          },
+        })
+        .subscribe(({ status, statusText }) => {
+          if (status === 200) {
+            console.log('Message sent to facebook API');
+          } else {
+            console.log(`${status}: ${statusText}`);
+          }
+        });
     } catch (err) {
       console.log(`Unable to send message: ${err}`);
     }
