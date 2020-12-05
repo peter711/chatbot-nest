@@ -1,0 +1,70 @@
+import { HttpService, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import IWebhookAPIRequestBody from './dto/IWebhookAPIRequestBody';
+import IWebhookMessage from './dto/IWebhookMessage';
+import IWebhookResponse from './dto/IWebhookResponse';
+
+@Injectable()
+export class MessengerService {
+  constructor(
+    private configService: ConfigService,
+    private httpService: HttpService,
+  ) {}
+
+  public async verifyWebhook(mode: string, token: string) {
+    return new Promise<void>((resolve, reject) => {
+      const verifyToken = this.getVerifyToken();
+      if (mode && token) {
+        if (mode === 'subscribe' && token === verifyToken) {
+          resolve();
+        }
+      }
+      reject('WRONG TOKEN');
+    });
+  }
+
+  public async handleMessage(senderPSID: string, { text }: IWebhookMessage) {
+    if (text) {
+      const response: IWebhookResponse = {
+        text: `You sent the message: "${text}"`,
+      };
+
+      this.callSendAPI(senderPSID, response);
+    }
+  }
+
+  private async callSendAPI(senderPSID: string, response: IWebhookResponse) {
+    const requestBody: IWebhookAPIRequestBody = {
+      recipient: {
+        id: senderPSID,
+      },
+      message: response,
+    };
+
+    const facebookGraphUri = this.getFacebookGraphAPIUri();
+    const pageAccessToken = this.getPageAccessToken();
+
+    try {
+      await this.httpService.post(facebookGraphUri, requestBody, {
+        params: {
+          access_token: pageAccessToken,
+        },
+      });
+      console.log('Message sent to facebook API');
+    } catch (err) {
+      console.log(`Unable to send message: ${err}`);
+    }
+  }
+
+  private getVerifyToken() {
+    return this.configService.get('MESSENGER_VERIFY_TOKEN');
+  }
+
+  private getFacebookGraphAPIUri() {
+    return this.configService.get('FACEBOOK_GRAPH_URI');
+  }
+
+  private getPageAccessToken() {
+    return this.configService.get('PAGE_ACCESS_TOKEN');
+  }
+}
