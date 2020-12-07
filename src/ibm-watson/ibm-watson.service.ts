@@ -1,13 +1,12 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IamAuthenticator } from 'ibm-watson/auth';
-
-const AssistantV2 = require('ibm-watson/assistant/v2');
-
+import AssistantV2 from 'ibm-watson/assistant/v2';
 @Injectable()
 export class IbmWatsonService implements OnModuleInit {
-  private assistant: typeof AssistantV2;
+  private assistant: AssistantV2;
   private readonly version = '2020-04-01';
+  private sessionId: string;
 
   constructor(private config: ConfigService) {
     this.assistant = new AssistantV2({
@@ -18,21 +17,43 @@ export class IbmWatsonService implements OnModuleInit {
       serviceUrl: this.getIbmWatsonUrl(),
     });
   }
-  onModuleInit() {
-    this.createSession();
+  async onModuleInit() {
+    await this.createSession();
   }
 
-  private createSession() {
-    this.assistant
-      .createSession({
+  public async sendMessage(text: string) {
+    try {
+      const { status, result } = await this.assistant.message({
         assistantId: this.getIbmWatsonAssistantId(),
-      })
-      .then((res) => {
-        console.log(JSON.stringify(res.result, null, 2));
-      })
-      .catch((err) => {
-        console.log(err);
+        sessionId: this.sessionId,
+        input: {
+          message_type: 'text',
+          text,
+        },
       });
+
+      if (status == 200) {
+        console.log(`IBM Watson message sent: ${result}`);
+      }
+
+      return result;
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  private async createSession() {
+    try {
+      const { status, result } = await this.assistant.createSession({
+        assistantId: this.getIbmWatsonAssistantId(),
+      });
+      if (status == 201) {
+        this.sessionId = result.session_id;
+        console.log('Established session with IBM Watson Assistant');
+      }
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   private getIbmWatsonApiKey() {

@@ -1,5 +1,6 @@
 import { HttpService, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { IbmWatsonService } from 'src/ibm-watson/ibm-watson.service';
 import IWebhookAPIRequestBody from './dto/IWebhookAPIRequestBody';
 import IWebhookMessage from './dto/IWebhookMessage';
 import IWebhookResponse from './dto/IWebhookResponse';
@@ -9,6 +10,7 @@ export class MessengerService {
   constructor(
     private configService: ConfigService,
     private httpService: HttpService,
+    private ibmWatsonService: IbmWatsonService,
   ) {}
 
   public async verifyWebhook(mode: string, token: string) {
@@ -25,8 +27,14 @@ export class MessengerService {
 
   public async handleMessage(senderPSID: string, { text }: IWebhookMessage) {
     if (text) {
+      const {
+        output: {
+          generic: [{ text: watsonText }],
+        },
+      } = await this.ibmWatsonService.sendMessage(text);
+
       const response: IWebhookResponse = {
-        text: `You sent the message: "${text}"`,
+        text: watsonText,
       };
 
       this.callSendAPI(senderPSID, response);

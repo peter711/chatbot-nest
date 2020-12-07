@@ -4,6 +4,7 @@ import { IbmWatsonService } from './ibm-watson.service';
 
 @Module({
   imports: [ConfigModule.forRoot()],
+  exports: [IbmWatsonService],
   providers: [IbmWatsonService],
 })
 export class IbmWatsonModule {}
